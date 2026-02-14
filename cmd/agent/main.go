@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"home-guard/internal/config"
 	"home-guard/internal/mqtt"
+	"home-guard/internal/notify"
 	"home-guard/internal/process"
 )
 
@@ -35,6 +37,22 @@ func main() {
 	}
 
 	manager := process.NewManager(process.NewWindowsAdapter())
+	notifier := notify.NewWindowsNotifier()
+
+	notifyTopic := fmt.Sprintf("cmnd/%s/notify", cfg.ClientID)
+	if err := client.Subscribe(notifyTopic, func(payload []byte) {
+		go func() {
+			var n notify.Notification
+			if err := json.Unmarshal(payload, &n); err != nil {
+				n = notify.Notification{Title: "Home Guard", Message: strings.TrimSpace(string(payload))}
+			}
+			if err := notifier.Send(n); err != nil {
+				log.Printf("failed to send notification: %v", err)
+			}
+		}()
+	}); err != nil {
+		log.Printf("failed to subscribe to %s: %v", notifyTopic, err)
+	}
 
 	killTopic := fmt.Sprintf("cmnd/%s/kill_test", cfg.ClientID)
 	if err := client.Subscribe(killTopic, func(payload []byte) {
