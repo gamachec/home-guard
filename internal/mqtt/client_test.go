@@ -189,6 +189,31 @@ func TestOnConnectCallback(t *testing.T) {
 	}
 }
 
+func TestPublishDiscovery(t *testing.T) {
+	client, mock := newTestClient(testConfig())
+	_ = client.Connect()
+
+	if err := client.PublishDiscovery(); err != nil {
+		t.Fatalf("PublishDiscovery() error = %v", err)
+	}
+
+	expectedTopics := []string{
+		"homeassistant/select/test-pc/mode/config",
+		"homeassistant/binary_sensor/test-pc/connectivity/config",
+		"homeassistant/sensor/test-pc/apps/config",
+	}
+
+	if len(mock.published) != len(expectedTopics) {
+		t.Fatalf("expected %d published messages, got %d", len(expectedTopics), len(mock.published))
+	}
+
+	for i, topic := range expectedTopics {
+		if mock.published[i].topic != topic {
+			t.Errorf("published[%d].topic = %q, want %q", i, mock.published[i].topic, topic)
+		}
+	}
+}
+
 func TestExponentialDelay(t *testing.T) {
 	cases := []struct {
 		attempt int

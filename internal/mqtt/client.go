@@ -87,6 +87,101 @@ func (c *Client) Publish(topic string, payload string) error {
 	return token.Error()
 }
 
+type haDevice struct {
+	Identifiers  []string `json:"identifiers"`
+	Name         string   `json:"name,omitempty"`
+	Model        string   `json:"model,omitempty"`
+	Manufacturer string   `json:"manufacturer,omitempty"`
+}
+
+type haSelectDiscovery struct {
+	Name         string   `json:"name"`
+	UniqueID     string   `json:"unique_id"`
+	CommandTopic string   `json:"command_topic"`
+	StateTopic   string   `json:"state_topic"`
+	Options      []string `json:"options"`
+	Device       haDevice `json:"device"`
+}
+
+type haBinarySensorDiscovery struct {
+	Name        string   `json:"name"`
+	UniqueID    string   `json:"unique_id"`
+	DeviceClass string   `json:"device_class"`
+	StateTopic  string   `json:"state_topic"`
+	PayloadOn   string   `json:"payload_on"`
+	PayloadOff  string   `json:"payload_off"`
+	Device      haDevice `json:"device"`
+}
+
+type haSensorDiscovery struct {
+	Name       string   `json:"name"`
+	UniqueID   string   `json:"unique_id"`
+	StateTopic string   `json:"state_topic"`
+	Device     haDevice `json:"device"`
+}
+
+func (c *Client) PublishDiscovery() error {
+	id := c.cfg.ClientID
+	fullDevice := haDevice{
+		Identifiers:  []string{id},
+		Name:         id,
+		Model:        "HomeGuard",
+		Manufacturer: "HomeGuard",
+	}
+	minDevice := haDevice{Identifiers: []string{id}}
+
+	entries := []struct {
+		topic   string
+		payload any
+	}{
+		{
+			fmt.Sprintf("homeassistant/select/%s/mode/config", id),
+			haSelectDiscovery{
+				Name:         "Mode d'utilisation",
+				UniqueID:     id + "_mode",
+				CommandTopic: fmt.Sprintf("cmnd/%s/mode", id),
+				StateTopic:   fmt.Sprintf("stat/%s/current_mode", id),
+				Options:      []string{"ACTIVE", "BLOCKED"},
+				Device:       fullDevice,
+			},
+		},
+		{
+			fmt.Sprintf("homeassistant/binary_sensor/%s/connectivity/config", id),
+			haBinarySensorDiscovery{
+				Name:        "Etat",
+				UniqueID:    id + "_online",
+				DeviceClass: "connectivity",
+				StateTopic:  fmt.Sprintf("stat/%s/status", id),
+				PayloadOn:   "online",
+				PayloadOff:  "offline",
+				Device:      minDevice,
+			},
+		},
+		{
+			fmt.Sprintf("homeassistant/sensor/%s/apps/config", id),
+			haSensorDiscovery{
+				Name:       "Applications en cours",
+				UniqueID:   id + "_running_apps",
+				StateTopic: fmt.Sprintf("stat/%s/running_apps", id),
+				Device:     minDevice,
+			},
+		},
+	}
+
+	for _, e := range entries {
+		data, err := json.Marshal(e.payload)
+		if err != nil {
+			return err
+		}
+		token := c.paho.Publish(e.topic, 1, true, data)
+		token.Wait()
+		if err := token.Error(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *Client) PublishRunningApps(apps []string) error {
 	topic := fmt.Sprintf("stat/%s/running_apps", c.cfg.ClientID)
 	payload, err := json.Marshal(apps)

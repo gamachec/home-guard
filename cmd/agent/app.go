@@ -37,6 +37,9 @@ func NewApp(cfg *config.Config, configPath string) *App {
 	}
 
 	mqttClient.SetOnConnect(func() {
+		if err := mqttClient.PublishDiscovery(); err != nil {
+			log.Printf("failed to publish HA discovery: %v", err)
+		}
 		if err := mqttClient.PublishStatus("online"); err != nil {
 			log.Printf("failed to publish status on reconnect: %v", err)
 		}
