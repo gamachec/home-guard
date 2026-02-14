@@ -17,15 +17,17 @@ const (
 )
 
 type Agent struct {
-	mu         sync.RWMutex
-	mode       Mode
-	blacklist  []string
-	cfg        *config.Config
-	configPath string
-	manager    *process.Manager
-	onPublish  func(mode Mode)
-	stopBlock  context.CancelFunc
-	killDelay  func() time.Duration
+	mu               sync.RWMutex
+	mode             Mode
+	blacklist        []string
+	cfg              *config.Config
+	configPath       string
+	manager          *process.Manager
+	onPublish        func(mode Mode)
+	onPublishRunning func(apps []string)
+	stopBlock        context.CancelFunc
+	killDelay        func() time.Duration
+	scanDelay        func() time.Duration
 }
 
 func New(
@@ -42,11 +44,24 @@ func New(
 		manager:    manager,
 		onPublish:  onPublish,
 		killDelay:  defaultKillDelay,
+		scanDelay:  defaultScanDelay,
 	}
 }
 
 func defaultKillDelay() time.Duration {
 	return time.Second
+}
+
+func defaultScanDelay() time.Duration {
+	return 5 * time.Second
+}
+
+func (a *Agent) SetOnPublishRunning(fn func(apps []string)) {
+	a.onPublishRunning = fn
+}
+
+func (a *Agent) Start(ctx context.Context) {
+	go a.runScanLoop(ctx)
 }
 
 func (a *Agent) SetMode(ctx context.Context, mode Mode) {
@@ -93,6 +108,25 @@ func (a *Agent) Blacklist() []string {
 	result := make([]string, len(a.blacklist))
 	copy(result, a.blacklist)
 	return result
+}
+
+func (a *Agent) runScanLoop(ctx context.Context) {
+	for {
+		a.mu.RLock()
+		blacklist := make([]string, len(a.blacklist))
+		copy(blacklist, a.blacklist)
+		a.mu.RUnlock()
+
+		if running, err := a.manager.RunningFromBlacklist(blacklist); err == nil && a.onPublishRunning != nil {
+			a.onPublishRunning(running)
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(a.scanDelay()):
+		}
+	}
 }
 
 func (a *Agent) runKillLoop(ctx context.Context) {

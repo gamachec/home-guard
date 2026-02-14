@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -81,6 +82,17 @@ func (c *Client) PublishStatus(status string) error {
 }
 
 func (c *Client) Publish(topic string, payload string) error {
+	token := c.paho.Publish(topic, 1, true, payload)
+	token.Wait()
+	return token.Error()
+}
+
+func (c *Client) PublishRunningApps(apps []string) error {
+	topic := fmt.Sprintf("stat/%s/running_apps", c.cfg.ClientID)
+	payload, err := json.Marshal(apps)
+	if err != nil {
+		return err
+	}
 	token := c.paho.Publish(topic, 1, true, payload)
 	token.Wait()
 	return token.Error()

@@ -78,6 +78,29 @@ func TestKillByName(t *testing.T) {
 	}
 }
 
+func TestRunningFromBlacklist(t *testing.T) {
+	adapter := &mockAdapter{
+		processes: []ProcessInfo{
+			{PID: 1, Name: "roblox.exe"},
+			{PID: 2, Name: "roblox.exe"},
+			{PID: 3, Name: "chrome.exe"},
+			{PID: 4, Name: "notepad.exe"},
+		},
+	}
+	manager := NewManager(adapter)
+
+	running, err := manager.RunningFromBlacklist([]string{"roblox.exe", "chrome.exe", "fortnite.exe"})
+	if err != nil {
+		t.Fatalf("RunningFromBlacklist() error = %v", err)
+	}
+	if len(running) != 2 {
+		t.Fatalf("expected 2 running apps, got %d: %v", len(running), running)
+	}
+	if running[0] != "roblox.exe" || running[1] != "chrome.exe" {
+		t.Errorf("running = %v, want [roblox.exe chrome.exe]", running)
+	}
+}
+
 func TestKillAll(t *testing.T) {
 	adapter := &mockAdapter{
 		processes: []ProcessInfo{

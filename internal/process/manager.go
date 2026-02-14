@@ -66,6 +66,25 @@ func (m *Manager) KillByName(name string) error {
 	return nil
 }
 
+func (m *Manager) RunningFromBlacklist(blacklist []string) ([]string, error) {
+	all, err := m.adapter.ListProcesses()
+	if err != nil {
+		return nil, err
+	}
+
+	running := make([]string, 0)
+	for _, name := range blacklist {
+		for _, p := range all {
+			if strings.EqualFold(p.Name, name) {
+				running = append(running, name)
+				break
+			}
+		}
+	}
+
+	return running, nil
+}
+
 func (m *Manager) KillAll(names []string) map[string]error {
 	var (
 		mu      sync.Mutex

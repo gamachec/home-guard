@@ -50,6 +50,13 @@ func NewApp(cfg *config.Config, configPath string) *App {
 	}
 
 	a.agent = agent.New(manager, cfg, configPath, onPublish)
+
+	a.agent.SetOnPublishRunning(func(apps []string) {
+		if err := mqttClient.PublishRunningApps(apps); err != nil {
+			log.Printf("failed to publish running apps: %v", err)
+		}
+	})
+
 	return a
 }
 
@@ -60,6 +67,7 @@ func (a *App) Start(ctx context.Context) error {
 
 	a.recoverMode(ctx)
 	a.subscribeTopics(ctx)
+	a.agent.Start(ctx)
 	return nil
 }
 

@@ -38,6 +38,7 @@ func newTestAgent(cfg *config.Config, configPath string, adapter *mockAdapter, o
 	manager := process.NewManager(adapter)
 	a := New(manager, cfg, configPath, onPublish)
 	a.killDelay = func() time.Duration { return 10 * time.Millisecond }
+	a.scanDelay = func() time.Duration { return 10 * time.Millisecond }
 	return a
 }
 
@@ -119,6 +120,39 @@ func TestSetModePublishesState(t *testing.T) {
 
 	if published != ModeActive {
 		t.Errorf("published = %q, want %q", published, ModeActive)
+	}
+}
+
+func TestStartPublishesRunningApps(t *testing.T) {
+	adapter := &mockAdapter{
+		procs: []process.ProcessInfo{
+			{PID: 1, Name: "game.exe"},
+			{PID: 2, Name: "game.exe"},
+		},
+	}
+	cfg := &config.Config{Blacklist: []string{"game.exe", "other.exe"}}
+
+	ch := make(chan []string, 1)
+	a := newTestAgent(cfg, "", adapter, nil)
+	a.SetOnPublishRunning(func(apps []string) {
+		select {
+		case ch <- apps:
+		default:
+		}
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	a.Start(ctx)
+
+	select {
+	case apps := <-ch:
+		if len(apps) != 1 || apps[0] != "game.exe" {
+			t.Errorf("published apps = %v, want [game.exe]", apps)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout: aucune app publiée")
 	}
 }
 
