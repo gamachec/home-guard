@@ -31,3 +31,15 @@ temps d'utilisation d'un ordinateur enfant via une intégration domotique (Home 
 L'agent doit être résilient (reconnexion automatique au broker MQTT) et sécurisé (ne traiter que les commandes provenant
 du broker autorisé). Il ne contient pas de logique de planning complexe ; celle-ci est déportée dans Home Assistant,
 l'agent agissant comme un exécuteur d'ordres et un capteur d'état.
+
+# Règles de développement OBLIGATOIRES
+
+- Ne pas commenter le code, préferer un code lisible.
+- Ne pas générer de documentation, à moins que ce soit explicitement demandé
+- Applique les principes de programmation orientée objet à la mode Go : isole chaque fonctionnalité dans des structs
+  dédiées avec leurs propres méthodes. Utilise des constructeurs pour l'injection de dépendances et des interfaces pour
+  découpler les modules (MQTT, ProcessManager, Notifier...). Le code doit être modulaire, sans variables globales, et
+  chaque service doit être géré via des goroutines et des Contexts pour un arrêt propre.
+- Rédige systématiquement des tests unitaires pour chaque nouvelle fonctionnalité (fichiers _test.go). Concentre-toi
+  uniquement sur les 'happy paths' (cas passants) pour valider le comportement nominal, sans chercher une couverture
+  exhaustive des cas d'erreur.

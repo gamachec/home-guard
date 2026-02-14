@@ -1,0 +1,7 @@
+{
+  "broker": "localhost",
+  "port": 1883,
+  "username": "",
+  "password": "",
+  "client_id": "pc-enfant"
+}
