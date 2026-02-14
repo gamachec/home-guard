@@ -43,6 +43,14 @@ func (c *Client) PublishStatus(status string) error {
 	return token.Error()
 }
 
+func (c *Client) Subscribe(topic string, handler func(payload []byte)) error {
+	token := c.paho.Subscribe(topic, 1, func(_ pahomqtt.Client, msg pahomqtt.Message) {
+		handler(msg.Payload())
+	})
+	token.Wait()
+	return token.Error()
+}
+
 func (c *Client) Disconnect() {
 	if c.paho != nil && c.paho.IsConnected() {
 		c.paho.Disconnect(250)

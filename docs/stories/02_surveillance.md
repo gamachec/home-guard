@@ -10,3 +10,4 @@
     * Implémenter la logique de "Kill" propre : tenter une fermeture propre d'abord, puis forcer si nécessaire.
     * **Test :** Créer un topic MQTT `cmnd/agent_pc/kill_test` qui, lorsqu'il reçoit un nom de processus, le ferme
       immédiatement.
+ 

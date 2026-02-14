@@ -43,3 +43,6 @@ l'agent agissant comme un exécuteur d'ordres et un capteur d'état.
 - Rédige systématiquement des tests unitaires pour chaque nouvelle fonctionnalité (fichiers _test.go). Concentre-toi
   uniquement sur les 'happy paths' (cas passants) pour valider le comportement nominal, sans chercher une couverture
   exhaustive des cas d'erreur.
+
+Inutile d'essayer de lancer les commandes GO dans le terminal, tu tourne dans un WSL et GO est installé sur mon
+filesystem Windows.

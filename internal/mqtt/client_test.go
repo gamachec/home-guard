@@ -17,9 +17,23 @@ func (t *mockToken) WaitTimeout(d time.Duration) bool { return true }
 func (t *mockToken) Done() <-chan struct{}             { ch := make(chan struct{}); close(ch); return ch }
 func (t *mockToken) Error() error                     { return nil }
 
+type mockMessage struct {
+	topic   string
+	payload []byte
+}
+
+func (m *mockMessage) Duplicate() bool    { return false }
+func (m *mockMessage) Qos() byte          { return 1 }
+func (m *mockMessage) Retained() bool     { return false }
+func (m *mockMessage) Topic() string      { return m.topic }
+func (m *mockMessage) MessageID() uint16  { return 0 }
+func (m *mockMessage) Payload() []byte    { return m.payload }
+func (m *mockMessage) Ack()               {}
+
 type mockPahoClient struct {
-	isConnected bool
-	published   []struct{ topic, payload string }
+	isConnected   bool
+	published     []struct{ topic, payload string }
+	subscriptions map[string]pahomqtt.MessageHandler
 }
 
 func (m *mockPahoClient) Connect() pahomqtt.Token {
@@ -39,6 +53,10 @@ func (m *mockPahoClient) Publish(topic string, qos byte, retained bool, payload 
 	return &mockToken{}
 }
 func (m *mockPahoClient) Subscribe(topic string, qos byte, callback pahomqtt.MessageHandler) pahomqtt.Token {
+	if m.subscriptions == nil {
+		m.subscriptions = make(map[string]pahomqtt.MessageHandler)
+	}
+	m.subscriptions[topic] = callback
 	return &mockToken{}
 }
 func (m *mockPahoClient) SubscribeMultiple(filters map[string]byte, callback pahomqtt.MessageHandler) pahomqtt.Token {
@@ -94,6 +112,29 @@ func TestPublishStatus(t *testing.T) {
 	}
 	if mock.published[0].payload != "online" {
 		t.Errorf("payload = %q, want %q", mock.published[0].payload, "online")
+	}
+}
+
+func TestSubscribe(t *testing.T) {
+	client, mock := newTestClient(testConfig())
+	_ = client.Connect()
+
+	var received string
+	err := client.Subscribe("cmnd/test-pc/kill_test", func(payload []byte) {
+		received = string(payload)
+	})
+	if err != nil {
+		t.Fatalf("Subscribe() error = %v", err)
+	}
+
+	handler, ok := mock.subscriptions["cmnd/test-pc/kill_test"]
+	if !ok {
+		t.Fatal("expected subscription to be registered on topic")
+	}
+
+	handler(mock, &mockMessage{topic: "cmnd/test-pc/kill_test", payload: []byte("roblox.exe")})
+	if received != "roblox.exe" {
+		t.Errorf("received = %q, want %q", received, "roblox.exe")
 	}
 }
 

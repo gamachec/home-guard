@@ -2,7 +2,10 @@ module home-guard
 
 go 1.25
 
-require github.com/eclipse/paho.mqtt.golang v1.5.0
+require (
+	github.com/eclipse/paho.mqtt.golang v1.5.0
+	golang.org/x/sys v0.22.0
+)
 
 require (
 	github.com/gorilla/websocket v1.5.3 // indirect
