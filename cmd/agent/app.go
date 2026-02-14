@@ -36,6 +36,12 @@ func NewApp(cfg *config.Config, configPath string) *App {
 		notifier:   notifier,
 	}
 
+	mqttClient.SetOnConnect(func() {
+		if err := mqttClient.PublishStatus("online"); err != nil {
+			log.Printf("failed to publish status on reconnect: %v", err)
+		}
+	})
+
 	onPublish := func(mode agent.Mode) {
 		statTopic := fmt.Sprintf("stat/%s/current_mode", cfg.ClientID)
 		if err := mqttClient.Publish(statTopic, string(mode)); err != nil {
@@ -50,10 +56,6 @@ func NewApp(cfg *config.Config, configPath string) *App {
 func (a *App) Start(ctx context.Context) error {
 	if err := a.mqtt.Connect(); err != nil {
 		return fmt.Errorf("failed to connect to MQTT broker: %w", err)
-	}
-
-	if err := a.mqtt.PublishStatus("online"); err != nil {
-		log.Printf("failed to publish status: %v", err)
 	}
 
 	a.recoverMode(ctx)

@@ -12,6 +12,26 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "install":
+			installService()
+			return
+		case "uninstall":
+			uninstallService()
+			return
+		}
+	}
+
+	if isWindowsService() {
+		runAsService()
+		return
+	}
+
+	runAgent()
+}
+
+func runAgent() {
 	execPath, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)

@@ -31,9 +31,10 @@ func (m *mockMessage) Payload() []byte    { return m.payload }
 func (m *mockMessage) Ack()               {}
 
 type mockPahoClient struct {
-	isConnected   bool
-	published     []struct{ topic, payload string }
-	subscriptions map[string]pahomqtt.MessageHandler
+	isConnected      bool
+	published        []struct{ topic, payload string }
+	subscriptions    map[string]pahomqtt.MessageHandler
+	onConnectHandler pahomqtt.OnConnectHandler
 }
 
 func (m *mockPahoClient) Connect() pahomqtt.Token {
@@ -66,7 +67,8 @@ func (m *mockPahoClient) Unsubscribe(topics ...string) pahomqtt.Token { return &
 
 func newTestClient(cfg *config.Config) (*Client, *mockPahoClient) {
 	mock := &mockPahoClient{}
-	client := newClientWithFactory(cfg, func(_ *pahomqtt.ClientOptions) pahomqtt.Client {
+	client := newClientWithFactory(cfg, func(opts *pahomqtt.ClientOptions) pahomqtt.Client {
+		mock.onConnectHandler = opts.OnConnect
 		return mock
 	})
 	return client, mock
@@ -165,5 +167,43 @@ func TestDisconnect(t *testing.T) {
 
 	if mock.isConnected {
 		t.Error("expected paho client to be disconnected")
+	}
+}
+
+func TestOnConnectCallback(t *testing.T) {
+	client, mock := newTestClient(testConfig())
+
+	called := false
+	client.SetOnConnect(func() { called = true })
+
+	_ = client.Connect()
+
+	if mock.onConnectHandler == nil {
+		t.Fatal("expected OnConnect handler to be registered")
+	}
+
+	mock.onConnectHandler(mock)
+
+	if !called {
+		t.Error("expected OnConnect callback to be called")
+	}
+}
+
+func TestExponentialDelay(t *testing.T) {
+	cases := []struct {
+		attempt int
+		want    time.Duration
+	}{
+		{1, time.Second},
+		{2, 2 * time.Second},
+		{3, 4 * time.Second},
+		{11, 2 * time.Minute},
+	}
+
+	for _, tc := range cases {
+		got := exponentialDelay(tc.attempt)
+		if got != tc.want {
+			t.Errorf("exponentialDelay(%d) = %s, want %s", tc.attempt, got, tc.want)
+		}
 	}
 }
