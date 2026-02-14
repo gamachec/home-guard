@@ -24,9 +24,8 @@ type App struct {
 	notifier   notify.Notifier
 }
 
-func NewApp(cfg *config.Config, configPath string) *App {
+func NewApp(cfg *config.Config, configPath string, notifier notify.Notifier) *App {
 	manager := process.NewManager(process.NewWindowsAdapter())
-	notifier := notify.NewWindowsNotifier()
 	mqttClient := mqtt.NewClient(cfg)
 
 	a := &App{
@@ -37,6 +36,7 @@ func NewApp(cfg *config.Config, configPath string) *App {
 	}
 
 	mqttClient.SetOnConnect(func() {
+		log.Printf("mqtt: connected to broker")
 		if err := mqttClient.PublishDiscovery(); err != nil {
 			log.Printf("failed to publish HA discovery: %v", err)
 		}
@@ -112,13 +112,16 @@ func (a *App) subscribeTopics(ctx context.Context) {
 
 	modeTopic := fmt.Sprintf("cmnd/%s/mode", a.cfg.ClientID)
 	if err := a.mqtt.Subscribe(modeTopic, func(payload []byte) {
-		a.agent.SetMode(ctx, agent.Mode(strings.TrimSpace(string(payload))))
+		mode := agent.Mode(strings.TrimSpace(string(payload)))
+		log.Printf("cmnd: mode -> %s", mode)
+		a.agent.SetMode(ctx, mode)
 	}); err != nil {
 		log.Printf("failed to subscribe to %s: %v", modeTopic, err)
 	}
 
 	blacklistTopic := fmt.Sprintf("cmnd/%s/blacklist/set", a.cfg.ClientID)
 	if err := a.mqtt.Subscribe(blacklistTopic, func(payload []byte) {
+		log.Printf("cmnd: blacklist/set -> %s", payload)
 		a.handleBlacklist(payload)
 	}); err != nil {
 		log.Printf("failed to subscribe to %s: %v", blacklistTopic, err)
@@ -126,12 +129,19 @@ func (a *App) subscribeTopics(ctx context.Context) {
 }
 
 func (a *App) handleNotify(payload []byte) {
+	defer func() {
+		if p := recover(); p != nil {
+			log.Printf("notify: panic: %v", p)
+		}
+	}()
+
 	var n notify.Notification
 	if err := json.Unmarshal(payload, &n); err != nil {
 		n = notify.Notification{Title: "Home Guard", Message: strings.TrimSpace(string(payload))}
 	}
+	log.Printf("cmnd: notify -> %q %q", n.Title, n.Message)
 	if err := a.notifier.Send(n); err != nil {
-		log.Printf("failed to send notification: %v", err)
+		log.Printf("notify: send failed: %v", err)
 	}
 }
 

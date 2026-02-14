@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"home-guard/internal/config"
+	"home-guard/internal/notify"
 )
 
 func main() {
@@ -20,6 +21,9 @@ func main() {
 		case "uninstall":
 			uninstallService()
 			return
+		case "notify":
+			runNotify()
+			return
 		}
 	}
 
@@ -29,6 +33,19 @@ func main() {
 	}
 
 	runAgent()
+}
+
+func runNotify() {
+	if len(os.Args) < 3 {
+		return
+	}
+	n, err := notify.DecodeNotification(os.Args[2])
+	if err != nil {
+		log.Fatalf("notify: invalid payload: %v", err)
+	}
+	if err := notify.NewWindowsNotifier().Send(n); err != nil {
+		log.Fatalf("notify: send failed: %v", err)
+	}
 }
 
 func runAgent() {
@@ -47,7 +64,7 @@ func runAgent() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := NewApp(cfg, configPath)
+	app := NewApp(cfg, configPath, notify.NewWindowsNotifier())
 	if err := app.Start(ctx); err != nil {
 		log.Fatalf("failed to start: %v", err)
 	}
