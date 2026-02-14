@@ -1,6 +1,9 @@
 package process
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 type ProcessInfo struct {
 	PID  uint32
@@ -40,18 +43,47 @@ func (m *Manager) KillByName(name string) error {
 	if err != nil {
 		return err
 	}
+
+	errs := make(chan error, len(procs))
+	var wg sync.WaitGroup
+
 	for _, p := range procs {
-		if err := m.adapter.KillProcess(p.PID); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(pid uint32) {
+			defer wg.Done()
+			if err := m.adapter.KillProcess(pid); err != nil {
+				errs <- err
+			}
+		}(p.PID)
+	}
+
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		return err
 	}
 	return nil
 }
 
 func (m *Manager) KillAll(names []string) map[string]error {
-	results := make(map[string]error)
+	var (
+		mu      sync.Mutex
+		wg      sync.WaitGroup
+		results = make(map[string]error)
+	)
+
 	for _, name := range names {
-		results[name] = m.KillByName(name)
+		wg.Add(1)
+		go func(n string) {
+			defer wg.Done()
+			err := m.KillByName(n)
+			mu.Lock()
+			results[n] = err
+			mu.Unlock()
+		}(name)
 	}
+
+	wg.Wait()
 	return results
 }

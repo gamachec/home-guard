@@ -138,6 +138,25 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
+func TestPublish(t *testing.T) {
+	client, mock := newTestClient(testConfig())
+	_ = client.Connect()
+
+	if err := client.Publish("stat/test-pc/current_mode", "BLOCKED"); err != nil {
+		t.Fatalf("Publish() error = %v", err)
+	}
+
+	if len(mock.published) != 1 {
+		t.Fatalf("expected 1 published message, got %d", len(mock.published))
+	}
+	if mock.published[0].topic != "stat/test-pc/current_mode" {
+		t.Errorf("topic = %q, want %q", mock.published[0].topic, "stat/test-pc/current_mode")
+	}
+	if mock.published[0].payload != "BLOCKED" {
+		t.Errorf("payload = %q, want %q", mock.published[0].payload, "BLOCKED")
+	}
+}
+
 func TestDisconnect(t *testing.T) {
 	client, mock := newTestClient(testConfig())
 	_ = client.Connect()

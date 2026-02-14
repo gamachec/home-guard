@@ -3,20 +3,9 @@
 package process
 
 import (
-	"syscall"
-	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
-)
-
-const wmClose = 0x0010
-
-var (
-	user32                    = windows.NewLazySystemDLL("user32.dll")
-	procEnumWindows           = user32.NewProc("EnumWindows")
-	procGetWindowThreadProcID = user32.NewProc("GetWindowThreadProcessId")
-	procPostMessage           = user32.NewProc("PostMessageW")
 )
 
 type WindowsAdapter struct{}
@@ -54,25 +43,6 @@ func (a *WindowsAdapter) ListProcesses() ([]ProcessInfo, error) {
 }
 
 func (a *WindowsAdapter) KillProcess(pid uint32) error {
-	a.tryGracefulKill(pid)
-	time.Sleep(3 * time.Second)
-	return a.forceKill(pid)
-}
-
-func (a *WindowsAdapter) tryGracefulKill(pid uint32) {
-	targetPID := pid
-	cb := syscall.NewCallback(func(hwnd uintptr, _ uintptr) uintptr {
-		var windowPID uint32
-		procGetWindowThreadProcID.Call(hwnd, uintptr(unsafe.Pointer(&windowPID)))
-		if windowPID == targetPID {
-			procPostMessage.Call(hwnd, wmClose, 0, 0)
-		}
-		return 1
-	})
-	procEnumWindows.Call(cb, 0)
-}
-
-func (a *WindowsAdapter) forceKill(pid uint32) error {
 	handle, err := windows.OpenProcess(windows.PROCESS_TERMINATE, false, pid)
 	if err != nil {
 		return nil

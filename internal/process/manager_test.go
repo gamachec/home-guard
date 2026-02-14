@@ -1,8 +1,12 @@
 package process
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 type mockAdapter struct {
+	mu        sync.Mutex
 	processes []ProcessInfo
 	killed    []uint32
 }
@@ -12,6 +16,8 @@ func (m *mockAdapter) ListProcesses() ([]ProcessInfo, error) {
 }
 
 func (m *mockAdapter) KillProcess(pid uint32) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.killed = append(m.killed, pid)
 	return nil
 }
@@ -64,6 +70,9 @@ func TestKillByName(t *testing.T) {
 	if err := manager.KillByName("roblox.exe"); err != nil {
 		t.Fatalf("KillByName() error = %v", err)
 	}
+
+	adapter.mu.Lock()
+	defer adapter.mu.Unlock()
 	if len(adapter.killed) != 2 {
 		t.Fatalf("expected 2 kills, got %d", len(adapter.killed))
 	}
@@ -84,6 +93,9 @@ func TestKillAll(t *testing.T) {
 			t.Errorf("KillAll[%s] unexpected error: %v", name, err)
 		}
 	}
+
+	adapter.mu.Lock()
+	defer adapter.mu.Unlock()
 	if len(adapter.killed) != 2 {
 		t.Fatalf("expected 2 kills, got %d", len(adapter.killed))
 	}

@@ -3,5 +3,6 @@
   "port": 1883,
   "username": "",
   "password": "",
-  "client_id": "pc-enfant"
+  "client_id": "pc-enfant",
+  "blacklist": ["roblox.exe", "fortnite.exe"]
 }
