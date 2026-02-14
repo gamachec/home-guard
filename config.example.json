@@ -4,5 +4,5 @@
   "username": "",
   "password": "",
   "client_id": "pc-enfant",
-  "blacklist": ["roblox.exe", "fortnite.exe"]
+  "blacklist": ["roblox.exe", "fortnite.exe", "discord.exe"]
 }

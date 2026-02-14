@@ -10,7 +10,6 @@ temps d'utilisation d'un ordinateur enfant via une intégration domotique (Home 
    interdites (jeux, navigateurs) selon l'état de l'agent.
 2. **Système de Modes :** Gestion de trois états de fonctionnement :
     * `ACTIVE` : Utilisation libre.
-    * `WARNING` : Envoi d'une notification native Windows (Toast) pour prévenir d'une coupure imminente (ex: J-5 min).
     * `BLOCKED` : Application stricte de la "Blacklist" avec scan fréquent et terminaison immédiate des processus
       interdits.
 3. **Communication Pilotée par Événements :** Utilisation du protocole **MQTT** pour une interaction bidirectionnelle en
@@ -46,3 +45,24 @@ l'agent agissant comme un exécuteur d'ordres et un capteur d'état.
 
 Inutile d'essayer de lancer les commandes GO dans le terminal, tu tourne dans un WSL et GO est installé sur mon
 filesystem Windows.
+
+# Conventions établies
+
+## Portabilité OS
+
+- Code Windows-spécifique dans `*_windows.go` avec `//go:build windows`
+- Stub non-Windows dans `stub_*.go` avec `//go:build !windows`
+- Les deux fichiers exposent le même type et implémentent la même interface
+
+## Constructeurs
+
+- Toujours un `NewXxx(deps...)` qui retourne un pointeur concret (`*Xxx`)
+- Les variantes de test utilisent une factory interne : `newXxxWithFactory(...)`
+- Les callbacks comportementaux sont injectés via le constructeur ou des setters dédiés
+
+## Tests
+
+- Les mocks sont définis dans le fichier `_test.go` du package concerné
+- Chaque package expose des helpers `newTestXxx(...)` et `testConfig()` pour réduire le boilerplate
+- Les délais temporels sont remplacés par des fonctions injectables (`killDelay`, `scanDelay`) fixées à 10ms dans les tests
+- Les mocks utilisent un `sync.Mutex` pour la vérification thread-safe des appels
