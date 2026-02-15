@@ -23,6 +23,12 @@ func (m *mockAdapter) ListProcesses() ([]process.ProcessInfo, error) {
 	return m.procs, nil
 }
 
+func (m *mockAdapter) ListApplications() ([]process.ProcessInfo, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.procs, nil
+}
+
 func (m *mockAdapter) KillProcess(pid uint32) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -126,15 +132,15 @@ func TestSetModePublishesState(t *testing.T) {
 func TestStartPublishesRunningApps(t *testing.T) {
 	adapter := &mockAdapter{
 		procs: []process.ProcessInfo{
-			{PID: 1, Name: "game.exe"},
-			{PID: 2, Name: "game.exe"},
+			{PID: 1, Name: "game.exe", Path: `C:\game.exe`},
+			{PID: 2, Name: "chrome.exe", Path: `C:\chrome.exe`, Description: "Google Chrome"},
 		},
 	}
-	cfg := &config.Config{Blacklist: []string{"game.exe", "other.exe"}}
+	cfg := &config.Config{}
 
-	ch := make(chan []string, 1)
+	ch := make(chan []process.ProcessInfo, 1)
 	a := newTestAgent(cfg, "", adapter, nil)
-	a.SetOnPublishRunning(func(apps []string) {
+	a.SetOnPublishRunning(func(apps []process.ProcessInfo) {
 		select {
 		case ch <- apps:
 		default:
@@ -148,8 +154,14 @@ func TestStartPublishesRunningApps(t *testing.T) {
 
 	select {
 	case apps := <-ch:
-		if len(apps) != 1 || apps[0] != "game.exe" {
-			t.Errorf("published apps = %v, want [game.exe]", apps)
+		if len(apps) != 2 {
+			t.Fatalf("expected 2 apps, got %d: %v", len(apps), apps)
+		}
+		if apps[0].Name != "game.exe" || apps[1].Name != "chrome.exe" {
+			t.Errorf("published apps = %v", apps)
+		}
+		if apps[1].Description != "Google Chrome" {
+			t.Errorf("apps[1].Description = %q, want %q", apps[1].Description, "Google Chrome")
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("timeout: aucune app publiée")

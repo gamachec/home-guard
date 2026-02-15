@@ -45,24 +45,3 @@ l'agent agissant comme un exécuteur d'ordres et un capteur d'état.
 
 Inutile d'essayer de lancer les commandes GO dans le terminal, tu tourne dans un WSL et GO est installé sur mon
 filesystem Windows.
-
-# Conventions établies
-
-## Portabilité OS
-
-- Code Windows-spécifique dans `*_windows.go` avec `//go:build windows`
-- Stub non-Windows dans `stub_*.go` avec `//go:build !windows`
-- Les deux fichiers exposent le même type et implémentent la même interface
-
-## Constructeurs
-
-- Toujours un `NewXxx(deps...)` qui retourne un pointeur concret (`*Xxx`)
-- Les variantes de test utilisent une factory interne : `newXxxWithFactory(...)`
-- Les callbacks comportementaux sont injectés via le constructeur ou des setters dédiés
-
-## Tests
-
-- Les mocks sont définis dans le fichier `_test.go` du package concerné
-- Chaque package expose des helpers `newTestXxx(...)` et `testConfig()` pour réduire le boilerplate
-- Les délais temporels sont remplacés par des fonctions injectables (`killDelay`, `scanDelay`) fixées à 10ms dans les tests
-- Les mocks utilisent un `sync.Mutex` pour la vérification thread-safe des appels

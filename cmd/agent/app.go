@@ -54,7 +54,7 @@ func NewApp(cfg *config.Config, configPath string, notifier notify.Notifier) *Ap
 
 	a.agent = agent.New(manager, cfg, configPath, onPublish)
 
-	a.agent.SetOnPublishRunning(func(apps []string) {
+	a.agent.SetOnPublishRunning(func(apps []process.ProcessInfo) {
 		if err := mqttClient.PublishRunningApps(apps); err != nil {
 			log.Printf("failed to publish running apps: %v", err)
 		}

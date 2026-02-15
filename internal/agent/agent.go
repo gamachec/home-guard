@@ -24,7 +24,7 @@ type Agent struct {
 	configPath       string
 	manager          *process.Manager
 	onPublish        func(mode Mode)
-	onPublishRunning func(apps []string)
+	onPublishRunning func(apps []process.ProcessInfo)
 	stopBlock        context.CancelFunc
 	killDelay        func() time.Duration
 	scanDelay        func() time.Duration
@@ -56,7 +56,7 @@ func defaultScanDelay() time.Duration {
 	return 5 * time.Second
 }
 
-func (a *Agent) SetOnPublishRunning(fn func(apps []string)) {
+func (a *Agent) SetOnPublishRunning(fn func(apps []process.ProcessInfo)) {
 	a.onPublishRunning = fn
 }
 
@@ -112,13 +112,8 @@ func (a *Agent) Blacklist() []string {
 
 func (a *Agent) runScanLoop(ctx context.Context) {
 	for {
-		a.mu.RLock()
-		blacklist := make([]string, len(a.blacklist))
-		copy(blacklist, a.blacklist)
-		a.mu.RUnlock()
-
-		if running, err := a.manager.RunningFromBlacklist(blacklist); err == nil && a.onPublishRunning != nil {
-			a.onPublishRunning(running)
+		if apps, err := a.manager.RunningApps(); err == nil && a.onPublishRunning != nil {
+			a.onPublishRunning(apps)
 		}
 
 		select {

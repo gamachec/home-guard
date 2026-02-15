@@ -182,7 +182,7 @@ func (c *Client) PublishDiscovery() error {
 	return nil
 }
 
-func (c *Client) PublishRunningApps(apps []string) error {
+func (c *Client) PublishRunningApps(apps any) error {
 	topic := fmt.Sprintf("stat/%s/running_apps", c.cfg.ClientID)
 	payload, err := json.Marshal(apps)
 	if err != nil {

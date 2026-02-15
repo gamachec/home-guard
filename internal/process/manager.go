@@ -1,17 +1,21 @@
 package process
 
 import (
+	"slices"
 	"strings"
 	"sync"
 )
 
 type ProcessInfo struct {
-	PID  uint32
-	Name string
+	PID         uint32 `json:"pid"`
+	Name        string `json:"name"`
+	Path        string `json:"-"`
+	Description string `json:"description,omitempty"`
 }
 
 type OSAdapter interface {
 	ListProcesses() ([]ProcessInfo, error)
+	ListApplications() ([]ProcessInfo, error)
 	KillProcess(pid uint32) error
 }
 
@@ -64,6 +68,17 @@ func (m *Manager) KillByName(name string) error {
 		return err
 	}
 	return nil
+}
+
+func (m *Manager) RunningApps() ([]ProcessInfo, error) {
+	apps, err := m.adapter.ListApplications()
+	if err != nil {
+		return nil, err
+	}
+	slices.SortFunc(apps, func(a, b ProcessInfo) int {
+		return int(a.PID) - int(b.PID)
+	})
+	return apps, nil
 }
 
 func (m *Manager) RunningFromBlacklist(blacklist []string) ([]string, error) {

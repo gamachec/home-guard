@@ -6,13 +6,18 @@ import (
 )
 
 type mockAdapter struct {
-	mu        sync.Mutex
-	processes []ProcessInfo
-	killed    []uint32
+	mu           sync.Mutex
+	processes    []ProcessInfo
+	applications []ProcessInfo
+	killed       []uint32
 }
 
 func (m *mockAdapter) ListProcesses() ([]ProcessInfo, error) {
 	return m.processes, nil
+}
+
+func (m *mockAdapter) ListApplications() ([]ProcessInfo, error) {
+	return m.applications, nil
 }
 
 func (m *mockAdapter) KillProcess(pid uint32) error {
@@ -20,6 +25,27 @@ func (m *mockAdapter) KillProcess(pid uint32) error {
 	defer m.mu.Unlock()
 	m.killed = append(m.killed, pid)
 	return nil
+}
+
+func TestRunningApps(t *testing.T) {
+	adapter := &mockAdapter{
+		applications: []ProcessInfo{
+			{PID: 5, Name: "notepad.exe", Path: `C:\Windows\notepad.exe`, Description: "Notepad"},
+			{PID: 2, Name: "chrome.exe", Path: `C:\Program Files\Google\chrome.exe`, Description: "Google Chrome"},
+		},
+	}
+	manager := NewManager(adapter)
+
+	apps, err := manager.RunningApps()
+	if err != nil {
+		t.Fatalf("RunningApps() error = %v", err)
+	}
+	if len(apps) != 2 {
+		t.Fatalf("expected 2 apps, got %d", len(apps))
+	}
+	if apps[0].PID != 2 || apps[1].PID != 5 {
+		t.Errorf("apps not sorted by PID: got [%d, %d]", apps[0].PID, apps[1].PID)
+	}
 }
 
 func TestFindByName(t *testing.T) {
