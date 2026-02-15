@@ -24,7 +24,7 @@ type App struct {
 	notifier   notify.Notifier
 }
 
-func NewApp(cfg *config.Config, configPath string, notifier notify.Notifier) *App {
+func NewApp(cfg *config.Config, configPath string, notifier notify.Notifier, version string) *App {
 	manager := process.NewManager(process.NewWindowsAdapter())
 	mqttClient := mqtt.NewClient(cfg)
 
@@ -42,6 +42,9 @@ func NewApp(cfg *config.Config, configPath string, notifier notify.Notifier) *Ap
 		}
 		if err := mqttClient.PublishStatus("online"); err != nil {
 			log.Printf("failed to publish status on reconnect: %v", err)
+		}
+		if err := mqttClient.PublishVersion(version); err != nil {
+			log.Printf("failed to publish version: %v", err)
 		}
 	})
 

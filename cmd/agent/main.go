@@ -12,6 +12,8 @@ import (
 	"home-guard/internal/notify"
 )
 
+var version = "dev"
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -25,11 +27,6 @@ func main() {
 			runNotify()
 			return
 		}
-	}
-
-	if isWindowsService() {
-		runAsService()
-		return
 	}
 
 	runAgent()
@@ -48,13 +45,22 @@ func runNotify() {
 	}
 }
 
+func writeVersionFile(dir, v string) {
+	if err := os.WriteFile(filepath.Join(dir, "version.txt"), []byte(v), 0644); err != nil {
+		log.Printf("failed to write version.txt: %v", err)
+	}
+}
+
 func runAgent() {
 	execPath, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	configPath := filepath.Join(filepath.Dir(execPath), "config.json")
+	execDir := filepath.Dir(execPath)
+	configPath := filepath.Join(execDir, "config.json")
+
+	writeVersionFile(execDir, version)
 
 	cfg, err := config.Load(configPath)
 	if err != nil {
@@ -64,7 +70,7 @@ func runAgent() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := NewApp(cfg, configPath, notify.NewWindowsNotifier())
+	app := NewApp(cfg, configPath, notify.NewWindowsNotifier(), version)
 	if err := app.Start(ctx); err != nil {
 		log.Fatalf("failed to start: %v", err)
 	}

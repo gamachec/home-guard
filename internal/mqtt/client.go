@@ -166,6 +166,15 @@ func (c *Client) PublishDiscovery() error {
 				Device:     minDevice,
 			},
 		},
+		{
+			fmt.Sprintf("homeassistant/sensor/%s/version/config", id),
+			haSensorDiscovery{
+				Name:       "Version",
+				UniqueID:   id + "_version",
+				StateTopic: fmt.Sprintf("stat/%s/version", id),
+				Device:     minDevice,
+			},
+		},
 	}
 
 	for _, e := range entries {
@@ -180,6 +189,13 @@ func (c *Client) PublishDiscovery() error {
 		}
 	}
 	return nil
+}
+
+func (c *Client) PublishVersion(version string) error {
+	topic := fmt.Sprintf("stat/%s/version", c.cfg.ClientID)
+	token := c.paho.Publish(topic, 1, true, version)
+	token.Wait()
+	return token.Error()
 }
 
 func (c *Client) PublishRunningApps(apps any) error {

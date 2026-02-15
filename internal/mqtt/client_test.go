@@ -201,6 +201,7 @@ func TestPublishDiscovery(t *testing.T) {
 		"homeassistant/select/test-pc/mode/config",
 		"homeassistant/binary_sensor/test-pc/connectivity/config",
 		"homeassistant/sensor/test-pc/apps/config",
+		"homeassistant/sensor/test-pc/version/config",
 	}
 
 	if len(mock.published) != len(expectedTopics) {
@@ -211,6 +212,25 @@ func TestPublishDiscovery(t *testing.T) {
 		if mock.published[i].topic != topic {
 			t.Errorf("published[%d].topic = %q, want %q", i, mock.published[i].topic, topic)
 		}
+	}
+}
+
+func TestPublishVersion(t *testing.T) {
+	client, mock := newTestClient(testConfig())
+	_ = client.Connect()
+
+	if err := client.PublishVersion("v1.2.3"); err != nil {
+		t.Fatalf("PublishVersion() error = %v", err)
+	}
+
+	if len(mock.published) != 1 {
+		t.Fatalf("expected 1 published message, got %d", len(mock.published))
+	}
+	if mock.published[0].topic != "stat/test-pc/version" {
+		t.Errorf("topic = %q, want %q", mock.published[0].topic, "stat/test-pc/version")
+	}
+	if mock.published[0].payload != "v1.2.3" {
+		t.Errorf("payload = %q, want %q", mock.published[0].payload, "v1.2.3")
 	}
 }
 

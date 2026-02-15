@@ -21,17 +21,27 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build Windows executable
+      - name: Build Windows executables
         env:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: 0
         run: |
           mkdir -p dist
-          go build -ldflags "-H windowsgui" -o dist/home-guard.exe ./cmd/agent
+          VERSION="${{ github.ref_name }}"
+          go build -ldflags "-H windowsgui -X main.version=${VERSION}" -o dist/home-guard.exe ./cmd/agent
+          go build -ldflags "-X main.version=${VERSION}" -o dist/home-guard-updater.exe ./cmd/updater
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum home-guard.exe home-guard-updater.exe > checksums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/home-guard.exe
+          files: |
+            dist/home-guard.exe
+            dist/home-guard-updater.exe
+            dist/checksums.txt
           generate_release_notes: true
